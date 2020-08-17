@@ -1,5 +1,6 @@
 import requests
 import json
+from tqdm import tqdm
 
 class YTstats:
     def __init__(self, api_key, channel_id):
@@ -10,7 +11,7 @@ class YTstats:
         self.video_data = None
 
     def get_channel_statistics(self):
-        url = f'https://www.googleapis.com/youtube/v3/channels?part=statistics&forUsername={self.channel_uname}&key={self.api_key}'
+        url = f'https://www.googleapis.com/youtube/v3/channels?part=statistics&id={self.channel_id}&key={self.api_key}'
         # print(url)
         json_url = requests.get(url)
         data = json.loads(json_url.text)
@@ -26,8 +27,38 @@ class YTstats:
     def get_channel_video_data(self):
         # Video ids
         channel_videos = self._get_channel_videos(limit=50)
-        print(channel_videos)
+        print(len(channel_videos))
+
         # Video statistics
+        
+        for video_id in tqdm(channel_videos):
+            data = self._get_single_video_data(video_id)
+            channel_videos[video_id].update(data)
+
+        self.video_data = channel_videos
+        return channel_videos
+
+    def _get_single_video_data(self, video_id):
+        url = self._create_single_video_data_url(video_id)
+        
+        json_url = requests.get(url)
+        data = json.loads(json_url.text)
+        try:
+            print(url)
+            data = data['items'][0]
+        except:
+            print('error')
+            data = dict()
+
+        return data
+
+    # TODO: Keep working on creating a single url for our api call. Reached daily query quota.
+    def _create_single_video_data_url(self, video_id):
+        # To reduce api calls, don't create a new url for each part.
+        # Instead add all parts to the same url as youtube api allows by looping through them
+        parts = ['snippet', 'statistics', 'contentDetails']
+        url = f'https://www.googleapis.com/youtube/v3/videos?id={video_id}&key{self.api_key}&part={parts.index(0)}&part={parts.index(1)}&part={parts.index(2)}'
+        return url
 
     def _get_channel_videos(self, limit=None):
         url = f'https://www.googleapis.com/youtube/v3/search?part=id&channelID={self.channel_id}&order=date&key={self.api_key}'
@@ -78,13 +109,21 @@ class YTstats:
 
         
     def dump(self):
-        if self.channel_statistics is None:
+        if self.channel_statistics is None or self.video_data is None:
+            print('data is none')
             return
+
+        fused_data = {
+            self.channel_id: {
+                'channel_statistics': self.channel_statistics,
+                'video_data': self.video_data
+            }
+        }
         
-        channel_title = 'Pokimane' # TODO: get channel name from data
+        channel_title = self.video_data.popitem()[1].get('channelTitle', self.channel_id)
         channel_title = channel_title.replace(' ', '_').lower()
         file_name = channel_title + '.json'
         with open(file_name, 'w') as f:
-            json.dump(self.channel_statistics, f, indent=4)
+            json.dump(fused_data, f, indent=4)
 
         print('file dumped')
