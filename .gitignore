@@ -7,5 +7,5 @@ __pycache__
 # Ignore Jupyter checkpoints
 /.ipynb_checkpoints
 
-# Ignore test.py file used to test data structure methods
-test.py
+# Ignore environment variables in env.py
+env.py

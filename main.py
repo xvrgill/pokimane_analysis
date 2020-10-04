@@ -1,6 +1,7 @@
 from youtube_statistics import YTstats
+from env import my_api_key
 
-API_KEY = 'AIzaSyANjsTff1LbA7-MuhnJhbu88-LlDE9wjL4'
+API_KEY = my_api_key
 channel_uname = 'pokimane'
 
 yt = YTstats(API_KEY, channel_uname)
